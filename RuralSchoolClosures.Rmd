@@ -1,0 +1,75 @@
+---
+title: "School After Recess: Exploring Rural School Closures (2012-2020)"
+author: "Lee Doucet"
+date:  "April 9th 2021"
+output:
+  pdf_document: default
+---
+
+```{r include = FALSE}
+#Load Packages
+#install.packages("readxl")
+library(readxl)
+```
+# Abstract 
+
+```{r}
+
+```
+
+# Introduction 
+
+  The topic of preventing school closures is one of those rare bi-partisan issues 
+that can bring people together from both sides of the political spectrum in working 
+towards a common goal. Despite having a common goal, school closures have morphed 
+into battle grounds between parents, school boards, and the government that represents
+them. This is especially true in rural communities where previous changes in the 
+per-pupil funding formula and trends in provincial demographics have been lowering 
+school enrollment numbers. Declining enrollment is problematic as the government prefers
+approximately 500-800 students per school and traditionally rural schools have much 
+less, around the range of 100-150 students per school. It would come to no surprise 
+that the government is looking at 600 closures with 500 of those being from rural 
+communities. A wave of closures of that magnitude threatens to tear the heart out 
+of many rural communities. Schools are much larger than the sum of their parts in 
+rural areas, they act as community hubs and are intrinsic to their economic prosperity.
+Once a rural area loses their local due to low enrollment, it causes a snowball effect 
+where families are less likely to move there, meaning even lower enrollment in the 
+next school where the students are now being bused towards which threatens their 
+funding. 
+
+Attempting to determine the appropriate threat level to rural communities has been 
+made difficult by the lack of public data that is made available. Both the Ministry
+of Education and local school boards do not publish the schools that are under review 
+or provide legacy lists of all schools that have been closed and what has replaced 
+them. Even more challenging is determining the reason for closure. Schools can be 
+closed for different reasons, they may have been dilapidated and a new one was constructed 
+to replace it. Or perhaps two schools were suffering from low enrollment and a new 
+one was built to replace both of them. To better understand what is transpiring with 
+rural school closures, research has been conducted into what factors can be attributed
+to a school closure. It is the hope of this research that it can support parents 
+dealing with on-going school closures and help academics working in this domain. 
+
+
+```{r}
+
+```
+
+# Data 
+
+See https://github.com/LeeDoucet/School-Closures- for Data 
+
+
+```{r include = FALSE}
+
+```
+# Discussion 
+
+```{r}
+
+```
+# Appendix
+
+```{r}
+
+```
+# References
