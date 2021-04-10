@@ -1,2 +1,2 @@
-# School_Deserts
-Investigating School Deserts in Ontario
+# School Closures 
+Investigating School Closures in Ontario
