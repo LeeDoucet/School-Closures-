@@ -1,0 +1,603 @@
+---
+title: "School After Recess: Exploring School Closures (2012-2020)"
+author: "Lee Doucet"
+date:  "April 21st 2021"
+output:
+  pdf_document: default
+
+bibliography: references.bib  
+
+---
+
+```{r  Setup, include = FALSE}
+
+###Load Packages
+
+# install.packages("readxl")
+# install.packages("kableExtra")
+# installed.packages("openxl")
+# install.packages("bibtex")
+#installed.packages("caret")
+library(openxlsx)
+library(tidyverse)
+library(readxl)
+library(tidyr)
+library(kableExtra)
+library(caret)
+
+"To-do list:
+
+  Get Modeling Down
+  Discussion / Results
+  Abstract
+  Editting and formatting
+  Organize GitHub, use cowplot 
+  Pray*
+  
+  Bonus: 
+  Literature Review
+  Case Study - Schools in the New with declincing enrollment
+  T-Test 
+  
+  
+  *Order subject to change"
+
+```
+# 1 Abstract 
+
+keywords, abstract, introduction, data, model, results, discussion,
+ In the discussion, the paper must include subsections on weaknesses and next steps - but these must be in proportion.
+
+
+```{r Data Loading, include = FALSE}
+
+mydf <- read_excel("SchoolData2.xlsx") # Loading Data 
+```
+
+# 2 Introduction 
+
+The topic of preventing school closures is one of those rare bi-partisan issues 
+that can bring people together from both sides of the political spectrum in working 
+towards a common goal. Despite having a shared vision of having access high-quality 
+schools in each community, the topic of school closures are a battleground fought by 
+parents, the school boards, and the provincial government who ultimately decides the rules. 
+This in part stems from the Ministry of Education facing increasing costs while operating schools
+that are underutilized (@geraghty). Exacerbating this problem is where the closure occurs as schools
+have a different function depending on their geographic location. In rural communities, the loss of a 
+school can often lead to negative irreversible impacts as they “are an essential element of the 
+fabric of rural communities” [@geraghty]. The loss of any school is devasting can be devasting for 
+those that rely on it. The difference is in the order of magnitude, in Toronto for instance, a school 
+closure can be remedied by traveling an additional stop on the subway. Whereas in rural communities, 
+the difference can transform from a walk to school to a 2-3-hour return trip daily[@geraghty]. 
+
+
+At the helm of school closures are urbanization, changes in demographics, and fiscal constraints 
+that require new reforms to keep up with the pace of change [@johns2020]. All of those put substantial
+pressure on the number of students enrolled in a school to justify its existence. The target the Ontario
+government is currently looking at is approximately 500 to 800 students per school, which may work 
+as a one size fits all approach in urban settings but may not function as well in rural areas[@citeBill]. Rural schools that head steady populations of 150-300 are now being considered too expensive to operate and inadequate as an institution and would benefit from modernization[@citeBill]. Once a school is considered to not have a sufficient population, it enters a process called a Pupil Accommodation Review where a decision is made at the school board level regarding to close it or not. The Ministry of Education has tipped the scales towards new builds and closures instead of retrofitting old schools through increased financial support for the former [@robertson]. These new builds are not guaranteed to be in the same district as a school board could decide to bus students to another district. This can lead to a cascading problem where a school is shuttered due to low enrollment that leads to families not moving to an area that lost their local school. Which in turn causes a positive feedback loop that that damages the town economically and hurts the areas school age children. 
+
+
+Investigating school closures has certain challenges as there is a lack of public data that has been made available. Both the Ministry of Education and local school boards do not publish the schools that are under review or provide legacy lists of all schools that have been closed and what has replaced them. Even more absent is the reason why the schools were closed in the first place. Meaning information has to be found through other means, if it can be found, through searching local news articles or statements from parents’ groups that have fought school closures. Working within these obstacles, the goal of this research paper is to gather as much information as I can from public data on Ontario’s public-school system that can provide data-driven insights into what influences the probability of a school more likely to close. Preference will be made for insights impacting rural communities but a lack of easily-accessible data will limit the scope of the research. 
+
+
+
+```{r Cleaning The Data | Checking Data, include= FALSE}
+
+sapply(mydf, function(x) sum(is.na(x))) #Checking for NAs, 1 in School Number & Status and 17 in Enrolment
+mydf[is.na(mydf$Enrolment),] # lists NA values 
+mydf[is.na(mydf$Status),] # Looks like Status and Enrolment share the same NAs
+mydf[is.na(mydf$`School Number`),]
+
+#checking what needs to be removed 
+
+unique(mydf[c("School Level")]) # School level shouldn't be here 
+unique(mydf[c("School Type")]) # School Type + Catholic/Roman Catholic + English
+unique(mydf[c("School Language")]) # School Language + Public is listed 
+unique(mydf[c("Status")]) # 1 NA column
+
+```
+
+```{r NA replacement in Enrolment, include=FALSE}
+
+
+mydf$Enrolment<-gsub("<","",as.character(mydf$Enrolment)) # Changes all <10 to 10
+mydf$Enrolment <- as.numeric(mydf$Enrolment) 
+
+which(grepl(726800, mydf$`School Number`)) #Find data frame row of school ID
+mydf[629, 8] = 10 # É Élém C Laurier-Carrière - NA to 10 
+
+which(grepl(689505, mydf$`School Number`)) 
+mydf[683, 8] = 10 # É Bishop Belleau - French Language Unit - NA to 10 
+
+which(grepl(733490, mydf$`School Number`)) 
+mydf[3806, 8] = 10 # Msgr Fraser Orientation Centre - NA to 10 
+
+which(grepl(557617, mydf$`School Number`)) 
+mydf[4407, 8] = 10 # Metropolitan Toronto School for the - NA to 10 
+
+which(grepl(924598, mydf$`School Number`)) 
+mydf[3071, 8] = 10 # M W Moore SS - NA to 10 
+
+which(grepl(201057, mydf$`School Number`)) 
+mydf[978, 8] = 10 # Foleyet PS - NA to 10 
+
+which(grepl(781185, mydf$`School Number`)) 
+mydf[3114, 8] = 10 # St Casimir's Catholic S - NA to 10 
+
+which(grepl(695602, mydf$`School Number`))  
+mydf[93, 8] = 10 # St Joseph S - NA to 10 
+
+which(grepl(311483, mydf$`School Number`)) 
+mydf[2310, 8] = 10 # MPS French Language Unit - NA to 10 
+
+which(grepl(852549, mydf$`School Number`)) 
+mydf[3810, 8] = 10 # MPS 	Msgr Fraser College (OL Lourdes Campus) - NA to 10 
+
+which(grepl(447212, mydf$`School Number`)) 
+mydf[2978, 8] = 10 # Peel Alternative - West Elementary - NA to 10
+
+which(grepl(86698, mydf$`School Number`)) 
+mydf[4421, 8] = 10 # 	Jean Augustine Girls' Leadership Academy - NA to 10
+
+which(grepl(924598, mydf$`School Number`)) 
+mydf[3075, 8] = 10 # 	M W Moore SS - NA to 10
+
+which(grepl(706078, mydf$`School Number`)) 
+mydf[3817, 8] = 10 # 	Francis Libermann Catholic Elementary CS - NA to 10
+
+which(grepl(26336, mydf$`School Number`)) 
+mydf[3076, 8] = 10 # 	M W Moore PS - NA to 10
+
+which(grepl(741782, mydf$`School Number`)) 
+mydf[318, 8] = 10 # 	St. James Intermediate - NA to 10
+
+
+``` 
+
+```{r Dealing with Duplicates, include=FALSE}
+
+### Transforming Data ###
+
+n_occur <- data.frame(table(mydf$`School Number`)) #Data Frame with a list of id's and the number of times they occurred
+n_occur[n_occur$Freq > 1,] #tells me which id's occurred more than once
+mydf[mydf$`School Number` %in% n_occur$Var1[n_occur$Freq > 1],] #Returns the records with more than one occurrence.
+
+which(grepl(733490, mydf$`School Number`)) #Looking for Duplicate Entry 
+which(grepl(924598, mydf$`School Number`))
+mydf <- mydf[-c(3806,3701),] #Removing Duplicate Entries
+
+### Note, apparently, and frustratingly so, School Boards have reused School IDs ###
+
+
+```
+
+```{r  Fixing Schools with wrong language, include = FALSE}
+
+mydf[mydf$`School Type` %in% c("English"), ] # Checking which rows have English in them for School Type
+
+mydf$'School Type' <-gsub("Roman Catholic","Catholic", as.character(mydf$`School Type`)) # shorten Roman Catholic
+
+which(grepl(531073, mydf$`School Number`)) #Finding the Index number through School ID and then substituting 
+mydf$`School Type`[155] <- 'Public'
+mydf$`School Language`[155] <- 'English'
+
+which(grepl(945587, mydf$`School Number`))
+mydf$`School Type`[156] <- 'Public'
+mydf$`School Language`[156] <- 'English'
+
+which(grepl(741782, mydf$`School Number`))
+mydf$`School Type`[318] <- 'Catholic'
+mydf$`School Language`[318] <- 'English'
+
+which(grepl(619396, mydf$`School Number`))
+mydf$`School Type`[1405] <- 'Public'
+mydf$`School Language`[1405] <- 'English'
+
+which(grepl(911607, mydf$`School Number`))
+mydf$`School Type`[1659] <- 'Public'
+mydf$`School Language`[1659] <- 'English'
+
+which(grepl(73130, mydf$`School Number`))
+mydf$`School Type`[1837] <- 'Public'
+mydf$`School Language`[1837] <- 'English'
+
+which(grepl(117986, mydf$`School Number`))
+mydf$`School Type`[1838] <- 'Public'
+mydf$`School Language`[1838] <- 'English'
+
+which(grepl(941883, mydf$`School Number`))
+mydf$`School Type`[1839] <- 'Public'
+mydf$`School Language`[1839] <- 'English'
+
+which(grepl(903850, mydf$`School Number`))
+mydf$`School Type`[1840] <- 'Public'
+mydf$`School Language`[1840] <- 'English'
+
+which(grepl(919977, mydf$`School Number`))
+mydf$`School Type`[2250] <- 'Public'
+mydf$`School Language`[2250] <- 'English'
+
+which(grepl(279960, mydf$`School Number`))
+mydf$`School Type`[2712] <- 'Public'
+mydf$`School Language`[2712] <- 'English'
+
+which(grepl(26336, mydf$`School Number`))
+mydf$`School Type`[3076] <- 'Public'
+mydf$`School Language`[3076] <- 'English'
+
+which(grepl(846929, mydf$`School Number`))
+mydf$`School Type`[3353] <- 'Catholic'
+mydf$`School Language`[3353] <- 'English'
+
+which(grepl(748504, mydf$`School Number`))
+mydf$`School Type`[3816] <- 'Catholic'
+mydf$`School Language`[3816] <- 'English'
+
+which(grepl(894621, mydf$`School Number`))
+mydf$`School Type`[4425] <- 'Public'
+mydf$`School Language`[4425] <- 'English'
+
+which(grepl(936286, mydf$`School Number`))
+mydf$`School Type`[4584] <- 'Public'
+mydf$`School Language`[4584] <- 'English'
+
+which(grepl(28304, mydf$`School Number`))
+mydf$`School Type`[5224] <- 'Public'
+mydf$`School Language`[5224] <- 'English'
+mydf$`School Type`[5242] <- 'Public'
+mydf$`School Language`[5242] <- 'English'
+
+```
+
+```{r Last Pre-Processing, include=FALSE}
+
+mydf[mydf$`School Type` %in% c("Protestant"), ]
+
+mydf[2983,]
+
+which(grepl(439738, mydf$`School Number`))
+
+mydf <- mydf[-c(2983),] # Deleting Protestant Separate
+
+mydf <- mydf %>% drop_na() # Deleting row that is column headers 
+
+mydf$`Board Name`<-gsub("Ottawa CDSB","Ottawa CSB",as.character(mydf$`Board Name`)) # Ottawa CSB was labelled wrong 
+
+
+
+```
+
+# 3 Data 
+
+## 3.1 The Source of the Data 
+
+
+The data used in this project was from licensed from the Ontario government, and published on the Canadian government Open Data catalogue[@citeOntario]. It has school enrollment information from both Ontario elementary (junior kindergarten until grade 8) and secondary (grades 9-12) schools. Each academic school year has its own dataset and starts from 2011-2012 and goes until the most recent 2019-2020 academic school year. For a total of 9 data datasets. Note to the reader, I will be using school year interchangeable with academic school year. 
+The files are available in languages French and English with both in XLSX format and text. It was released on 2021-01-27 and was last updated on 2021-01-28. 
+
+## 3.2 Creating a School Closure Dataset 
+
+Currently there are no publicly available datasets that I can find that lists public school closures in Ontario. At best, there are anecdotal accounts of school closing published by newspapers but nothing appropriate for data analysis. As a solution, I found Open Data from the Ontario government that listed 
+the enrollment of every school from 2011-2012 to 2019-2020 school years. By comparing a dataset to the following year in sequence, I could tell by the primary key School ID, which schools were not present and had a high probability of closure. I say probability as there is no guarantee that information is correct and needs to be verified during the data pre-processing phase. A new datast was constructed by using the left outer join clause, which includes all rows on the left table (earlier year) that do not match with any years on the right table (year afterwards). Providing a new table that lists all the schools that did not appear in the following year. This process was repeated 8 times and the results were placed in a new dataset.
+
+Before the dataset could be joined to another one, a new column was added called Status which marked all schools as closed. In the 2019-2020 school year data set, the corresponding was also created with each school on the dataset marked as open.They were then joined together, creating 5245 rows of data. Bringing together 4844 schools that were listed as open and 401 schools that were closed. To increase the granularity of the data, a new column region was created that added a region column which placed each school as either south or north depending on their school boards location in Ontario. Separating both regions was the area of Algonquin Park which Statistics Canada uses as part of their map that delineates northern and southern Canada [@citeMap]. 
+## 3.3 Data Quality
+
+In reference to the data gathered from the Ontario government for use in the custom dataset, overall, the data is good for its intended purposes but has some limitations that prevent it from being high quality. 
+The data was accurate and reliable but had to be cleaned extensively for errors. There were a few instances of a school disappearing in some datasets, which would led me to believe it had closed only for it to return. A couple schools shared the same primary key, School ID, which meant having to find that information outside of the data set. Then there was a problem when trying to attach School IDs to a different database with many of the School IDs not matching even when all other details matched. Despite those difficulties, I still have strong confidence in the data as it is sufficiently fit for the purpose and discrepancies can easily be investigated through a web search to verify supplemental information.  
+
+The other area where the data lacked was in the completeness. It would have helped immensely if the data had a clear indicator of how school the was or at minimum, list the city or municipality. Nowhere present either was any mention of schools that have closed. That being said, there were overall very few missing fields in a 5,000 which drastically cut down the pre-processing time for the data. The data was also very consistent except for a couple naming conventions that were not uniform. For instance, Roman Catholic schools were sometimes just written as Catholic. The structure of the data made it very easy to implement new columns that logically flowed with how the datasets were initialized. Supporting the data was also the timeliness of it, with its age being fairly recent as it was made available for use not long after the previous academic school year. Volatility of the data was minimal, with very few alterations in the data
+
+## 3.4 Data Strengths 
+
+The biggest strength of the data are the demographic information parameters which provide great descriptive insights and make interoperability between datasets possible. In a few instances when using School ID as my primary key did not work between data sets, there was still School Name, Board Number, and Board Name to verify any discrepancies. Information can also be easily attached, Region was created to identify between Southern and Northern Ontario and only required Board Name to add that information to School Name. 
+
+To combine with those demographic details, there are plenty of descriptive characteristics to separate schools apart from each other. Schools can be separated by major categories in school language, school level, and school type. Then the lone quantitative parameter, enrollment, allows us to look at the total amount of students in the school boards and track population for its impact. These combined can accomplish a wide variety of different analysis. Are French schools in the north declining over time or are students shifting from one school board to another. Having enrollment also allows the direct comparison between ideal school numbers from the Ministry of Education and the number of students per school. 
+
+## 3.5 Data Ethics 
+
+From a statistical perspective, there are missing information that will skew the results from this paper. As mentioned previously, a left outer join between two academic school year data sets provided the schools that were closed, a right outer join was not completed to get a list of schools that were opening. This omission was due to the scope of the project and making it more manageable during the allotted time available for course work. To prevent this paper from misleading anyone, a few summary statistics will help put some of the data into perspective. In the 2011-2012 academic school year, there were 4,899 schools and 2,042,995 total students. By the last year, 2019-2020, there were 4,844 schools and 2,056,055 total students. As you can see, there was not tremendous difference schools and students, what matters is where it is happening. 
+
+There were some abnormalities that were not possible to correct with my level of domain expertise. About 68 schools had 15 or less students present with many listings under 10. Some were plausible with Toronto DSB’s Native Learning Centre East having 15 students, I could see and welcome a small learning place for Indigenous learners to focus on learning. Others were more difficult to accept, St Martins Catholic School in Toronto has only 15 students enrolled but when I used Google Maps to examine it, it looked much bigger. This will be something to look into the future, I will round the schools under 10 to 10 as I think it makes the most sense.  
+
+Attempting to determining what constitutes a rural school was more challenging than first imagined with the present data. To compensate, I used the boundary of Algonquin Park which is close to the line that Statistics Canada uses for separating Northern and Southern Canada. There may be some differences in opinion but across my research, that was what I found that was most common. 
+
+Probably the most important omission from my dataset is the reason for closure. There are several reasons why a school closes and each have a different meaning. A school could be dilapidated and another one built in its place, or two schools can be closed as the school board consolidates them into a new school. I’ve had to be very careful with my research funding to not overstep what the data tells. 
+
+## 3.5 Descriptive Analysis
+
+### 3.5.1 Overview of Public School Landscape 
+
+From Table 1 we can get a glimpse of the breakdown of the public-school system in Ontario. The vast majority of schools in Ontario are elementary (grades jk-8) with 3,965, compared to 876 secondary schools (grades 9-12). Schools are taught in both the official languages with 4,362 English schools and 479 French schools. Then there is the breakdown of Catholic and Public schools which is more balanced but still favouring public schools with 3,191 public and Catholic Schools. Both of these school levels have eliminated 10% of their schools over a the 8-year period. 
+
+Table 1 was generated by Kable[@citeKABLE] & R [@citeR]
+
+```{r Table 1 General Summary Stats", echo=FALSE}
+
+table1 <-        # Table of School Level, their Status, and count / % of them
+  mydf %>%
+  group_by(`School Level`,Status)%>%   #what I am grouping by 
+  summarise(n = n()) %>%
+  arrange(`School Level`, desc(n)) %>%  #changing the order appeared 
+  mutate(prop = n/sum(n)) %>%
+ rename("Total Schools" = n,
+         "Proportion of Total Schools (%)" = "prop") # Creating Tables 
+
+table1 %>%        # Making the Table better with Kable package
+  knitr::kable(caption = "Table 1: Number of Open/Closed Schools (2020)", digits = 2) %>%
+  kableExtra::kable_styling(bootstrap_options = "striped", full_width =  FALSE)
+```
+
+### 3.5.2 Additional Demographic Paramaters 
+
+When we look at some more key demographic information, School Type and Region, we can see in the data two clear important details. First, that the majority of the schools are in the south region. Secondly that Public schools are approximately twice the size of Catholic schools in number. Both Catholic and Public schools have a similar level of school split, except for public schools in the North while have a lower percentage. They 
+may represent evidence of changing school priorities in smaller areas, which the north is as a smaller region.  
+Table 2 was generated by Kable[@citeKABLE] & R [@citeR]
+```{r, echo=FALSE}
+
+table2 <- 
+  mydf %>%
+  group_by(`School Level`,`School Type`,Region)%>%
+  summarise(n = n()) %>%
+  mutate(prop = n/sum(n)) %>%
+ rename("Total Schools" = n,
+         "Split of schools (%)" = "prop") # Creating Tables 
+
+table2 %>% #Creating a chart to display the data for Property Type by Score/Count
+  knitr::kable(caption = "Table 2: School Breakdown Per Region and Type", digits = 2) %>%
+  kableExtra::kable_styling(bootstrap_options = "striped", full_width =  FALSE)
+
+
+``` 
+
+### 3.5.3 Indications of Closures 
+
+Graph 1 highlights just how small northern Ontario school boards are in number compared to their southern 
+counterpart. The graph only lists schools with less than 1500 students for clarity purposes, as onnly a small number of schools proportionately are above that in Ontario. It also provides a good look at the range of students. Southern schools’ distribution is similar to a bell curve with the bulk of the students between 230 and 500 students. Whereas Northern schools is more of a slope that gets smaller the more students are enrolled in a school. They both share the same characteristic where the majority of the school closures are closer towards zero. This backs up the research that suggests that underpopulated schools are more likely to close. More surprisingly is that several schools have what I am assuming would be critically low populations. As schools have reported 15 or less students with some reporting as low as 10 students. At this time, it is unknown whether those schools are in the process of closing, represent a clerical error, or have some additional explanation. 
+
+
+```{r Graph of North vs South Enrolment, echo=FALSE}
+
+newEnrolment <- mydf %>%
+filter(Enrolment < 1500)
+
+newEnrolment %>% 
+  mutate(students = Enrolment) %>%
+ggplot(mapping = aes(x = Enrolment, fill = Status)) +
+  labs(title = "                         Closures Per Student Enrolment ", 
+       x = "Number of Students", 
+       y = "Schools ") +
+  geom_histogram(binwidth = 20, position = "dodge") +
+facet_wrap(~Region)
+
+
+``` 
+Graph 1 was generated by ggplot [@citeGG] & R [@citeR]
+
+
+```{r Prep for Graphs 2 & 3, include=FALSE}
+
+### Distribution of Schools per Enrolment ###
+
+northSchool <-
+    mydf %>%
+    filter(mydf$Region =="North")
+
+southSchool <-
+    mydf %>%
+    filter(mydf$Region =="South")
+
+quantile(northSchool$Enrolment, c(.25, .50, .75))
+IQR(northSchool$Enrolment)
+
+quantile(southSchool$Enrolment, c(.25, .50, .75))
+IQR(southSchool$Enrolment)
+
+quantile(mydf$Enrolment, c(.25, .50, .75))
+IQR(mydf$Enrolment)
+
+### research & Statistical Ranges 
+
+idealEnrolment <- 
+  mydf %>%
+  filter(Enrolment > 500 & Enrolment < 800)
+
+qualityEnrolment <- 
+  mydf %>%
+  filter(Enrolment < 500)
+
+northRange <-
+  northSchool %>%
+  filter(Enrolment > 75 & Enrolment < 265)
+
+idealEnrolment1 <- idealEnrolment %>% filter(idealEnrolment$Status =="Open")
+idealEnrolment2 <- idealEnrolment %>% filter(idealEnrolment$Status =="Closed")
+
+northRange1 <- northRange %>% filter(northRange$Status =="Open")
+northRange2 <- northRange %>% filter(northRange$Status =="Closed")
+
+``` 
+
+
+```{r Graph 2 & 3 - Schools in Ideal Range, echo=FALSE}
+
+### Graphs 2 ###
+
+graph2 <- 
+  idealEnrolment %>%
+  ggplot(mapping = aes(x = Enrolment, fill = Status)) +
+  labs(title = "Government Recommended School size (500-800) ", 
+       x = "Number of Students", 
+       y = "Schools ") +
+  geom_histogram(binwidth = 10, position = "dodge")
+
+
+### Graph 3
+
+graph3 <- 
+northRange %>%
+ggplot(mapping = aes(x = Enrolment, fill = Status)) +
+  labs(title = "IQR range of all Northern Schools ", 
+       x = "Number of Students", 
+       y = "Schools ") +
+  geom_histogram(binwidth = 10, position = "dodge")
+
+graph2
+graph3
+``` 
+Graph 2 was generated by ggplot [@citeGG] & R [@citeR]
+Graph 3 was generated by ggplot [@citeGG] & R [@citeR]
+
+### 3.5.3 Closures Depending on Enrolment Numbers 
+
+Graph 2 shows the ideal range of 500-800 students per school.. If we use the Interquartile range (IQR), it effectively divides up a set of numbers into quartiles (25%, 50%, 75%) which are break downs of the distribution of the data at certain levels. It is useful as it provides snapshots of where the data is and can be used for comparison. When we take graph 1 and examine the range of student enrollment it creates some concerns when we compare the IQR to the ideal range of students. Overall, on average, a school will only have 325 students, much less than the lower bound cut-off of 500 recommended students. Only when we reach the around the 75% of the highest enrollment of schools do they cross into the acceptable threshold. There would have to be dramatic changes for schools to suddenly meet those targets as they are unrealistic at the present
+
+Then we have graph 3 which displays the IQR of schools that are in the north. Unfortunately the top-bound of the IQR is just over half the minimal threshold for desired amount of students per school. This puts schools in the north at a significant disadvantage. You can see it in the numbers when comparing school closures with schools in the ideal range. There were 921 schools listed in the 500-800 range, with 14 of them closing. Then when you compare that to the schools in the north, there were substantially less schools with 233 and almost double the amount of closures with 27. 
+
+```{r Model Prep Changing Variable Types, include=FALSE}
+
+str(mydf)
+
+mydf$`Board Name` <- as.factor(mydf$`Board Name`)
+mydf$`School Level` <- as.factor(mydf$`School Level`)
+mydf$`School Type` <- as.factor(mydf$`School Type`)
+mydf$`School Language` <- as.factor(mydf$`School Language`)
+mydf$`School Type` <- as.factor(mydf$`School Type`)
+mydf$Enrolment <- as.numeric(mydf$Enrolment)
+mydf$Status <- as.factor(mydf$Status)
+mydf$Region <- as.factor(mydf$Region)
+
+``` 
+
+# 4 Model 
+
+## 4.1 Sample Strategy for the Model 
+
+When I compare the amount of schools closed from 2012-2020, 399, it’s a drastically smaller number than the 4841 schools that remain open in 2020. Any comparison in this state would introduce too much bias towards schools that were open and not give meaningful results. To correct for this, I will be taking a subset of the school open data to match the number of schools that were closed. In deciding which schools are to be selected, I will be using simple random sample without replacement (SRSWOR). This means that each individual sample in the schools’ that are open data set will have the same opportunity of being selected. The order that they are picked in is not important. The without replacement means that after a school has been selected for the sample, they are not placed back for another chance of becoming re-sampled. 
+
+$$ N!/ n! (N-n)!$$
+
+In figure 1 above, N represents the number of schools in the population, n is the number of sampled schools. The ! represents the factorial component where N! would be N times N-1, times N-2, until completing down until reaching 1.[@rapid]
+
+```{r Sample Creation,  include=FALSE}
+
+### Create Sample of Open Schools Without Replacement ###
+
+schoolClosed <- mydf %>% filter(`Status` == 'Closed') # Select rows that are closed 
+schoolOpened <- mydf %>% filter(`Status` == 'Open') # Select rows that are Open
+
+set.seed(1)
+openSample <- sample(1:nrow(schoolOpened), 399) #Random Sample Without Replacement from schools that are open
+openDfSample <- schoolOpened[openSample, ]
+
+sampleSize <- rbind(schoolClosed, openDfSample) #merge the two data frames together 
+
+sampleSize %>% count(Status)
+```
+
+## 4.2 Statistical Method
+
+In order to understand what parameters can influence whether a school remains open or closed, a statistical test will be required. As the dependent variable is binary, conducting a logistic regression is an appropriate test. Since we are using a subset of the open data, there is no danger in overfitting for that data which is when a model's data is limited and can only speak for internal validity and not external validity. 
+
+## 4.2 Control Variables 
+
+The first control variable is enrolment. From looking at the graphs with trends in student’s population, it is clear that enrolment is a key indicator of whether a school becomes closed or not judging by the clustering of school closures near overall low student populations. 
+
+The second control variable is Region. As part of the main investigation into School Closures, it was important to see if schools belonging to different regions had different impacts 
+
+Third was Board Name, this is another way of tackling region at a more granular level. 
+
+## 4.2 Logistic Regressions
+
+### 4.2.1 Enrolment on Status 
+
+Enrolment was very significant with a p-value of <2e-16 
+
+### 4.2.2 Region on Status 
+
+No significant findings 
+
+### 4.2.3 Enrolment and Region on Status 
+
+Enrolment was very significant with a p-value of <2e-16 
+
+### 4.2.4 Board Name on Status 
+
+Out of 75 boards, York Region DSB was the only one under the alpha level of 0.5 with a p-value of 0.0120
+
+### 4.2.5 Board Name and Region on Status
+
+No significant findings 
+
+### 4.2.6 Board Name and Enrolment on Status 
+
+Enrolment was very significant with a p-value of <2e-16. Three Boards had strong effects, Hamilton-Wentworth CDSB with a p-value of 0.00408 and Niagara DSB with a p-value of 0.00834
+
+### 4.2.7 Board Name, Region, Enrolment, School Level, School Language, and School Type on Status
+
+Enrolment was very significant with a p-value of <2e-16. Secondary Schools' almost had a significant impact with a p-value of 9.91e-09
+
+```{R, include=FALSE}
+### LogisticRegression ###
+
+logRegression <- glm(Status ~ Enrolment, data = sampleSize, family = binomial)
+summary(logRegression)
+
+logRegression2 <- glm(Status ~ Region, data = sampleSize, family = binomial)
+summary(logRegression2)
+
+logRegression3 <- glm(Status ~ Enrolment + Region, data =sampleSize, family = binomial)
+summary(logRegression3)
+
+logRegression4 <- glm(Status ~ `Board Name`, data =sampleSize, family = binomial)
+summary(logRegression4)
+
+logRegression5 <- glm(Status ~ `Board Name` + Region, data =sampleSize, family = binomial)
+summary(logRegression5)
+
+logRegression6 <- glm(Status ~ Enrolment + `Board Name`, data =sampleSize, family = binomial)
+summary(logRegression6)
+
+logRegression7 <- glm(Status ~ Region + Enrolment + `Board Name` + `School Level` + `School Language` + `School Type`, data =sampleSize, family = binomial)
+summary(logRegression7)
+```
+# 4.3 Model Prediction
+
+(I'm testing the model to make sure it works here, 50.1% seems low)
+
+
+
+```{r Model Training, include=TRUE}
+inTrain <- createDataPartition(y = sampleSize$Status, p = .60, list = FALSE)
+training <- sampleSize[inTrain,]
+testing <- sampleSize[-inTrain,]
+
+dim(training)
+dim(testing)
+
+closedProb <- predict(logRegression2, testing, type ="response")
+closedPred <- rep("Closed", dim(training)[1])
+closedPred[closedProb > .5] = "Open"
+table(closedPred, training$Status)
+
+levels(mydf$Status)
+
+mean(closedPred == training$Status)
+```
+
+```{r Model Prediction, include=TRUE}
+
+predict(logRegression2, newdata=data.frame(Enrolment=c(525),Region=c("South")), type="response")
+
+``` 
+
+
+# 5 Results and Discussion 
+# Appendix
+
+```{r}
+
+
+```
+# References
